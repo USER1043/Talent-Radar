@@ -13,6 +13,21 @@ Useful context before you start "fixing" things that were deliberately changed (
 - **Small-sample mode** lets the sandbox run without `faiss.index`/`bm25.pkl`.
 - Project README and `redrob_ranking_architecture.md` were rewritten to say plainly that labels are rule-generated and several design points changed.
 
+## What was independently re-checked
+
+After `git lfs pull`, in a CPU sandbox without access to `huggingface.co` (so MiniLM could not be downloaded and `rank.py` could not run):
+
+| Claim (project notes) | Re-checked? | Result |
+|---|---|---|
+| 100,000 rows, 48 columns in `features.parquet` | ✓ | Matches |
+| 5,542 honeypots flagged (5.5%); rule counts 21 / 295 / 0 / 0 / 5,248 | ✓ | Matches exactly (counted from `honeypot_reasons`) |
+| Ridge coefficients (e.g. +2.397 `semantic_sim_to_ideal`, +0.160 `notice_period_penalty`, ≈ 0 for the three disqualifiers) | ✓ | Match exactly (unpickled with scikit-learn 1.9.1; a version-mismatch warning vs 1.9.0, harmless here) |
+| Eval-set label counts (0:50, 1:40, 3:20, 5:40) | ✓ | Match |
+| Rewrite cache: 39 entries, 32 × Qwen-1.5B + 7 × Qwen-0.5B | ✓ | Match |
+| "29 tests pass, 1 setup error" | ✓ | **44 pass, 1 error** in a fresh clone (more tests were added with the slotted module); the error is the missing `sample_submission.csv` |
+| `is_pure_research` / `is_recent_wrapper_only` rarity | new finding | 0% / 0.18% of a 20,000-row pool sample |
+| 1 min 47 s / 4 GB run, 2,969 shortlist, 2,792 post-honeypot, 0 honeypots in top 100, 0 audit failures over ≈ 800 claims, 38 rows reworded | ✗ not reproduced | Need the 100K `candidates.jsonl`, `faiss.index`/`bm25.pkl` (~37 min to build) and the MiniLM weights |
+
 ## A. Correctness risks
 
 ### A1. Row-position coupling between artifacts and filtered data (`rank.py`) — *partly mitigated, verify the rest*
@@ -56,7 +71,7 @@ The 30 honeypot negatives came from flags that included the removed rule 3 and t
 
 ### B2. Three JD disqualifiers carry ≈ 0 weight
 
-`is_consulting_only` (−0.003), `is_pure_research` (0.000) and `is_recent_wrapper_only` (0.000) are effectively not enforced by the model. Evidence from the committed `eval_set.csv`: only **4 of the 150 rows** have `is_consulting_only = True` (3 keyword stuffers, 1 honeypot) and **none** of the 20 `mild_fit` rows do, even though that group was meant to include consulting-only candidates — the model has almost nothing to learn a weight from. (`is_pure_research` / `is_recent_wrapper_only` could not be checked here because `features.parquet` is an LFS object; they are likely also rare, and the labels come from title/similarity rules that do not use them.) The JD calls pure research a hard "we will not move forward", yet none of the three flags changes a score materially. Other coefficients have unintuitive signs (`semantic_sim_to_jd` −0.865, `years_of_experience` −0.170). Options: enforce them as an explicit multiplier (as availability is), retrain with better labels, or use monotonic constraints.
+`is_consulting_only` (−0.003), `is_pure_research` (0.000) and `is_recent_wrapper_only` (0.000) are effectively not enforced by the model. Re-checked after `git lfs pull` (see "What was independently re-checked" below): `is_pure_research` fires on **0 of 20,000** randomly sampled pool candidates, so it is a *dead feature* — its rule (a research term and no production term in the narrative) essentially never matches; `is_recent_wrapper_only` fires on 0.18%; `is_consulting_only` on 7.05% of the pool. Evidence from the committed `eval_set.csv`: only **4 of the 150 rows** have `is_consulting_only = True` (3 keyword stuffers, 1 honeypot) and **none** of the 20 `mild_fit` rows do, even though that group was meant to include consulting-only candidates — the model has almost nothing to learn a weight from. (`is_pure_research` / `is_recent_wrapper_only` could not be checked here because `features.parquet` is an LFS object; they are likely also rare, and the labels come from title/similarity rules that do not use them.) The JD calls pure research a hard "we will not move forward", yet none of the three flags changes a score materially. Other coefficients have unintuitive signs (`semantic_sim_to_jd` −0.865, `years_of_experience` −0.170). Options: enforce them as an explicit multiplier (as availability is), retrain with better labels, or use monotonic constraints.
 
 ### B3. No feature scaling for Ridge
 

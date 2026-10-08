@@ -141,7 +141,7 @@ less prone to overfitting than boosted trees even with shallow trees.
 | `is_pure_research` | 0.000 | **≈ 0 — not effectively enforced** |
 | `is_recent_wrapper_only` | 0.000 | **≈ 0 — not effectively enforced** |
 
-So three JD disqualifiers (consulting-only, pure research, wrapper-only) carry essentially no weight in the model. Cause not investigated; a plausible one is that, in the rule-generated training labels, these
+So three JD disqualifiers (consulting-only, pure research, wrapper-only) carry essentially no weight in the model. (Coefficients above were re-verified by unpickling `ranker_model.pkl`.) For `is_pure_research` the reason is simple: on a 20,000-row random sample of the pool it never fires (0%); `is_recent_wrapper_only` fires on 0.18% and `is_consulting_only` on 7.05%. Cause not investigated; a plausible one is that, in the rule-generated training labels, these
 flags carry little information beyond the title/similarity rules that define the label groups. Inputs are not standardised, so coefficient magnitudes are not directly comparable across features.
 
 Metric helpers in the script:

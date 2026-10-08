@@ -81,7 +81,7 @@ Exit code 1 on errors, 0 otherwise; warnings print but don't fail.
 | `tests/test_reasoning_llm_rewrite.py` | 17 tests | The rewrite gate (what it accepts/rejects), keep-list, prefill, fallback, repair pass, cache round-trip, live-mode cache write | none (injected fake generator) |
 | `tests/test_reasoning_slotted.py` | slot/gate/cache/diversity tests | Slotted-template gate and cache refill | none |
 
-The project reports **29 passing and 1 setup error** in a fresh clone (the error is the missing `sample_submission.csv`). There are no direct unit tests yet for `features_utils.py` rules, the
+The project's own notes report 29 passing and 1 setup error; re-running in a fresh clone (after `git lfs pull`) gives **44 passing and 1 setup error** (the error is the missing `sample_submission.csv`), the difference being tests added with the slotted-reasoning module. There are no direct unit tests yet for `features_utils.py` rules, the
 availability multiplier, `honeypot_flags.py`, or `rank.py` itself.
 
 Defined but unused constants in the regression test (`JD_TITLE_KEYWORDS`, `MISMATCH_TITLE_PATTERNS`) hint at a planned check:
