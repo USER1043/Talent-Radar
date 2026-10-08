@@ -63,7 +63,7 @@ One row per candidate, written in 5,000-row batches by a streaming `ParquetWrite
 ### Why nested data is stored as JSON strings
 
 Expanding career/skills into columns would create hundreds of mostly-empty columns
-and make batch schemas unstable. Downstream consumers (`company_stats`, `honeypot_flags`,
+and make batch schemas unstable. Downstream consumers (`honeypot_flags`, `reasoning_grounded`,
 `features_utils`) `json.loads` the one column they need. Trade-off: parsing cost on every use
 and no columnar predicate pushdown — acceptable here because those consumers are offline or small-N.
 
@@ -78,18 +78,14 @@ this text, and first-person leakage produced reasoning that read as if the candi
 > in one batch, pyarrow may infer a different type than in earlier batches and `write_table`
 > will fail. The code comments flag the fix (pass an explicit `pa.schema`).
 
-## `artifacts/company_stats.parquet`
+## `artifacts/company_stats.parquet` (retired)
 
-| Column | Meaning |
-|---|---|
-| `company` | Exact stripped company string |
-| `occurrence_count` | Number of career entries across the pool mentioning it |
-| `is_corroborated` | `occurrence_count >= 5` (Tier A) |
-| `earliest_plausible_date` | ≈ 10th-percentile start date across mentions |
+Produced by `company_stats.py`, which is **no longer part of the pipeline** (its only consumer, honeypot rule 3, was removed — see
+[honeypot-detection.md](honeypot-detection.md)). Kept for reference. Columns: `company`, `occurrence_count`, `is_corroborated` (≥ 5 mentions), `earliest_plausible_date` (≈ 10th-percentile start date). Not committed.
 
 ## `artifacts/honeypot_flags.parquet`
 
-`candidate_id, is_honeypot (bool), honeypot_reasons ("; "-joined rule messages)`.
+`candidate_id, is_honeypot (bool), honeypot_reasons ("; "-joined rule messages)`. LFS object. Five rules; 5,542 of 100K flagged (5.5%).
 
 ## Retrieval artifacts
 
@@ -99,18 +95,20 @@ this text, and first-person leakage produced reasoning that read as if the candi
 | `bm25.pkl` | `build_index.py` | Pickled `BM25Okapi` over `\w+` lower-cased tokens of `narrative_text` | ❌ (gitignored, ~185 MB) |
 | `jd_embeddings.npy` | `build_index.py` | shape (2, 384): `[0]` literal JD text, `[1]` "ideal candidate" paragraph | ✅ |
 
-## Training artifacts
+## Training and reasoning artifacts
 
 | File | Content |
 |---|---|
-| `eval_set.csv` | 150 rows: `candidate_id, relevance, sample_type, current_title, current_company, years_of_experience, is_honeypot, is_consulting_only, semantic_sim, skills` |
+| `eval_set.csv` | 150 rows: `candidate_id, relevance, sample_type, current_title, current_company, years_of_experience, is_honeypot, is_consulting_only, semantic_sim, skills`. Relevance is **rule-generated** |
 | `ranker_model.pkl` | `{"type": "ridge"\|"lightgbm", "model": <fitted>, "feature_names": [...]}` — currently **Ridge** |
+| `reasoning_rewrites.json` | Cache of LLM rewrites keyed by `sha1(grounded draft)`: `{"rewrite", "model", "attempt"[, "template", "mode"]}`. 39 entries (32 from Qwen2.5-1.5B, 7 from 0.5B). Read by `--reasoning-mode grounded-cached` (re-gated per row) |
 
 ## Output: `submission.csv`
 
 `candidate_id, rank (1–100), score (float, non-increasing), reasoning (1–2 sentences)`.
-`score` is the raw ranker output (not normalised to 0–1); the top rows are typically
-well separated from the pack (≈ 8.2 / 7.8 / 7.7 then ≈ 4.3–5.5 in the committed file).
+`score` is the Ridge output **times the availability multiplier** (not normalised to 0–1). The top rows are typically well separated from the pack
+(≈ 8.4 / 8.0 at ranks 1–2 in the committed file, then a tightly packed tail: ranks 50–100 span only ≈ 0.4 points).
+In `rank.py`'s working frame the pre-multiplier value is kept as `model_score`, alongside `availability_multiplier`.
 
 ## The 16 ranker features
 
@@ -129,7 +127,7 @@ Order is whatever `X_df.columns` was at training time and is stored in the pickl
 | 9 | `title_chasing_pattern` | `avg_tenure_months`, `n_employers` |
 | 10 | `framework_enthusiast_signal` | skills rule |
 | 11 | `behavioral_score` | 8-signal weighted sum |
-| 12 | `notice_period_penalty` | step function |
+| 12 | `notice_period_penalty` | step function — **forced to 0 at prediction time** (see retrieval-and-ranking §3) |
 | 13 | `skill_to_experience_ratio` | parquet |
 | 14 | `semantic_sim_to_jd` | cos(narrative, literal JD) |
 | 15 | `semantic_sim_to_ideal` | cos(narrative, ideal-candidate paragraph) |

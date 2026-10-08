@@ -36,6 +36,10 @@ budgeted 4–5K). Why both?
 
 Retrieval is deliberately **exact** (`IndexFlat*`), not HNSW/IVF — 100K×384 is tiny, and it removes ANN recall as a variable.
 
+**Small-sample mode.** If the candidates file has ≤ 1,500 IDs, `rank.py` skips both legs and scores every candidate. This lets the sandbox run without
+`faiss.index`/`bm25.pkl` (git-ignored, absent from the HF Space). The BM25 feature is set to `0.0` in this mode (its fitted weight is only ≈ 0.004), so scores can
+differ slightly from a full-pool run. On the full pool the shortlist is 2,969 candidates.
+
 ## 3. Structured JD-rule features (`features_utils.py`)
 
 The JD has an explicit "things we do NOT want" list. Each clause becomes a 0/1
@@ -67,8 +71,11 @@ cheap and noisy; see the trade-offs in [design-decisions.md](design-decisions.md
 | 61–90 | 0.5 |
 | > 90 | 0.8 |
 
-The JD says sub-30-day is ideal, 30+ is "still in scope but the bar gets higher". The design doc asked for a smooth
+The JD says sub-30-day is ideal, 30+ is "still in scope but the bar gets higher". The original design asked for a smooth
 curve; the implementation is a step function.
+
+> **Important:** the fitted Ridge gave `notice_period_penalty` a *positive* coefficient (+0.16) — i.e. it rewarded longer notice, contradicting the JD.
+> `rank.py` therefore feeds that feature as **0** at prediction time and applies notice as a penalty in the availability multiplier (§6). The pickle itself is unchanged.
 
 ### Behavioural score (`compute_behavioral_score`) — range 0–1
 
@@ -76,7 +83,7 @@ A weighted sum of eight terms (weights sum to 1.0), with "today" pinned at **202
 
 | Term | Weight | Definition |
 |---|---|---|
-| recency | 0.15 | `exp(−ln2 · days_since_last_active / 90)` (90-day half-life); default 180 days if date is unparseable |
+| recency | 0.15 | `exp(−ln2 · days_since_last_active / 90)` (90-day half-life) relative to `AS_OF_DATE`; default 180 days if date is unparseable |
 | responsiveness | 0.15 | `recruiter_response_rate` (default 0.5 if null) |
 | speed | 0.10 | `1 / (1 + avg_response_time_hours / 24)` (0.5 if null/negative) |
 | reliability | 0.15 | `interview_completion_rate` (0.5 if null) |
@@ -85,9 +92,9 @@ A weighted sum of eight terms (weights sum to 1.0), with "today" pinned at **202
 | trust | 0.10 | 0.5·verified_email + 0.3·verified_phone + 0.2·linkedin_connected |
 | github | 0.10 | `github_activity_score / 100`, 0.5 if −1/null |
 
-The JD explicitly says a "perfect on paper" candidate who hasn't logged in for six months and has a 5% response rate is
-effectively unavailable — this score is the answer to that. Weights are hand-set; the ranker only sees the single
-composite (not its components).
+`AS_OF_DATE = 2026-06-30` (the pool snapshot date) is defined once in `features_utils.py`, so runs are reproducible.
+Weights are hand-set; the ranker only sees the single composite (not its components). Its influence is small: response rate contributes at most
+≈ 0.24 score points across its whole range, on a scale where the top 100 span roughly 4–8. That weakness is why a separate **availability multiplier** was added (§6).
 
 ## 4. Candidate-level similarity features (online)
 
@@ -113,13 +120,54 @@ The winner (`lgb ≥ ridge` ⇒ LightGBM, else Ridge) is refit on all 150 rows a
 feature names. **Ridge won**, which is what is committed. At ~150 examples a 16-feature linear model with L2 shrinkage is
 less prone to overfitting than boosted trees even with shallow trees.
 
+### Fitted Ridge coefficients (from the project's architecture notes)
+
+| Feature | Coef. | Reading |
+|---|---|---|
+| `semantic_sim_to_ideal` | +2.397 | The dominant signal |
+| `behavioral_score` | +1.592 | Second |
+| `no_recent_coding` | −0.757 | Works as intended (non-technical titles ↓) |
+| `no_external_validation` | −0.612 | |
+| `cv_speech_robotics_no_nlp` | −0.249 | |
+| `framework_enthusiast_signal` | −0.226 | |
+| `skill_to_experience_ratio` | −0.213 | |
+| `years_of_experience` | −0.170 | Slightly *negative* |
+| `notice_period_penalty` | +0.160 | **Wrong direction** — neutralised at prediction time |
+| `semantic_sim_to_jd` | −0.865 | Unintuitive sign (collinear with the "ideal" similarity) |
+| `n_skills` | +0.082 | |
+| `title_chasing_pattern` | +0.041 | |
+| `bm25_score` | +0.004 | Tiny (features are unscaled — BM25 values are large) |
+| `is_consulting_only` | −0.003 | **≈ 0 — not effectively enforced** |
+| `is_pure_research` | 0.000 | **≈ 0 — not effectively enforced** |
+| `is_recent_wrapper_only` | 0.000 | **≈ 0 — not effectively enforced** |
+
+So three JD disqualifiers (consulting-only, pure research, wrapper-only) carry essentially no weight in the model. Cause not investigated; a plausible one is that, in the rule-generated training labels, these
+flags carry little information beyond the title/similarity rules that define the label groups. Inputs are not standardised, so coefficient magnitudes are not directly comparable across features.
+
 Metric helpers in the script:
 
 - `ndcg_k(relevances, k)` — standard DCG/IDCG with `log2(i+2)`.
 - `average_precision` and `precision_at_10` — binarise at `relevance ≥ 3`.
 - `compute_composite_score` — `0.50·NDCG@10 + 0.30·NDCG@50 + 0.15·MAP + 0.05·P@10`.
 
-## 6. Final ordering
+## 6. Availability multiplier (post-model)
+
+Added after an audit found the learned model barely reacted to unreachable candidates. From the JD: "a perfect-on-paper candidate who hasn't logged in for 6 months
+and has a 5% recruiter response rate is … not actually available. Down-weight them appropriately." Implemented in `features_utils.compute_availability_multiplier`;
+result range **0.29–1.0**; applied **after** `ranker.predict` so the trained model is untouched.
+
+| Factor | Rule (constants in `features_utils.py`) |
+|---|---|
+| Recency | No penalty up to `RECENCY_FULL_CREDIT_DAYS=90` idle days; linear down to ×`RECENCY_FLOOR_FACTOR=0.7` at `RECENCY_FLOOR_DAYS=180`. Missing/invalid date ⇒ treated as 180 days |
+| Recruiter response rate | No penalty at ≥ `RESPONSE_FULL_CREDIT_RATE=0.4` (pool median ≈ 0.44); linear down to ×`RESPONSE_FLOOR_FACTOR=0.5` at 0%. Missing ⇒ neutral |
+| Notice period | `1 − NOTICE_PENALTY_WEIGHT(0.2) × notice_period_penalty` ⇒ ×1.0 (≤ 30 d), ×0.96 (≤ 60), ×0.90 (≤ 90), ×0.84 (> 90) |
+
+`apply_availability_multiplier(score, m)` is `score × m` for `score ≥ 0` and `score / m` for negative scores, so **a down-weighted candidate can never move up**.
+Parameters are judgment values taken from the JD's wording, not fitted (there is no ground truth to fit against). Caveat: scores from rank 50 to 100 span only ≈ 0.4 points, so modifier changes can move mid-list candidates a long way.
+
+`rank.py` keeps both columns (`model_score`, `availability_multiplier`) on the frame and prints the mean multiplier and how many shortlisted candidates fall below 0.8.
+
+## 7. Final ordering
 
 ```python
 non_hp_df.sort_values(by=["score", "candidate_id_num"], ascending=[False, True]).head(100)
@@ -132,7 +180,7 @@ The numeric part of the ID is extracted so the tie-break is numeric-ascending, w
 
 | Trap | Defence |
 |---|---|
-| Keyword stuffers (HR Manager with AI skills) | `no_recent_coding` (title coherence) + relevance label 1 in training + embeddings of the *whole* narrative rather than skill list |
-| Plain-language strong candidates | Ideal-paragraph embedding + dense leg of retrieval |
-| Behavioural twins (same skills, one reachable) | `behavioral_score`, `notice_period_penalty` |
-| Honeypots | Separate hard filter — see [honeypot-detection.md](honeypot-detection.md) |
+| Keyword stuffers (HR Manager with AI skills) | `no_recent_coding` (title coherence) + relevance label 1 in training + embeddings of the *whole* narrative rather than skill list. The committed top 100 contains only AI/ML/search/recommendation/data-science titles |
+| Plain-language strong candidates | Ideal-paragraph embedding + dense leg of retrieval (effect not measured) |
+| Behavioural twins (same skills, one reachable) | `behavioral_score` + the availability multiplier (judgment parameters) |
+| Honeypots | Separate hard filter (five self-contained rules) — see [honeypot-detection.md](honeypot-detection.md) |

@@ -27,8 +27,10 @@ applied scientist* and none of *marketing, hr, recruiter, sales, support, operat
 Resulting label counts: 0 → 50, 1 → 40, 3 → 20, 5 → 40.
 
 > **Important:** relevance is assigned *by these rules*, not by a human reading each profile (the script's docstring says
-> "automatically assigns baseline relevance scores"; the architecture doc envisaged manual labelling). The CSV has human-scannable columns so
-> labels *can* be edited by hand and the ranker retrained. Consequences are discussed in [known-issues-and-roadmap.md](known-issues-and-roadmap.md).
+> "automatically assigns baseline relevance scores"; the original plan envisaged manual labelling, and the project README now states this plainly). Relevance is constant within each
+> sample type in the committed file. The CSV has human-scannable columns so labels *can* be edited by hand and the ranker retrained.
+> The 30 honeypot negatives were sampled from flags that **still included the since-removed rule 3**, and the eval set / ranker have not been regenerated since.
+> Consequences are discussed in [known-issues-and-roadmap.md](known-issues-and-roadmap.md).
 
 ## Metrics
 
@@ -60,7 +62,8 @@ A superset. Adds:
 
 - **ID existence** against the candidates file (the gap the official validator leaves).
 - **Non-empty** reasoning and **no duplicate** reasoning strings (errors).
-- **Tone warning**: any row with rank > 70 whose reasoning contains none of a list of hedging words (*gap, concern, limited, lack, notice, however, but, …*).
+- **Tone warning**: any row with rank > 70 whose reasoning contains none of a list of hedging words (*gap, concern, limited, lack, notice, however, but, …*). The grounded reasoning states concerns with other wording
+  ("Caveat:", "Held back by"), so this warning can be a **false positive**.
 
 Exit code 1 on errors, 0 otherwise; warnings print but don't fail.
 
@@ -74,17 +77,23 @@ Exit code 1 on errors, 0 otherwise; warnings print but don't fail.
 | | `test_no_duplicate_reasonings` | All 100 reasonings unique | `submission.csv` |
 | | `test_scores_non_increasing` | Score ordering | `submission.csv` |
 | `tests/test_streamlit_app.py` | `test_streamlit_load_data` | `load_data` returns all columns the UI needs (`behavioral_score`, trap flags, …) | `features.parquet`, `honeypot_flags.parquet` (LFS), `submission.csv`; run from repo root |
+| `tests/test_reasoning_grounded.py` | 8 tests | Audit passes; only owned skills named; real, specific concerns; honest no-concern case; tone follows rank; determinism; many candidates distinct and grounded; audit catches fabrication | none (builds synthetic rows) |
+| `tests/test_reasoning_llm_rewrite.py` | 17 tests | The rewrite gate (what it accepts/rejects), keep-list, prefill, fallback, repair pass, cache round-trip, live-mode cache write | none (injected fake generator) |
+| `tests/test_reasoning_slotted.py` | slot/gate/cache/diversity tests | Slotted-template gate and cache refill | none |
+
+The project reports **29 passing and 1 setup error** in a fresh clone (the error is the missing `sample_submission.csv`). There are no direct unit tests yet for `features_utils.py` rules, the
+availability multiplier, `honeypot_flags.py`, or `rank.py` itself.
 
 Defined but unused constants in the regression test (`JD_TITLE_KEYWORDS`, `MISMATCH_TITLE_PATTERNS`) hint at a planned check:
 "no title-mismatched candidate in the top 10". Implementing that is a good first contribution.
 
 ## Suggested pre-submission checklist
 
-1. `python rank.py --candidates ./candidates.jsonl --out ./submission.csv` (note wall-clock; budget is 5 min).
+1. `python rank.py --candidates ./candidates.jsonl --out ./submission.csv` (note wall-clock; budget is 5 min; measured 1 min 47 s on 16 cores).
 2. `python validate_submission.py submission.csv`
 3. `python validate_local.py --csv submission.csv --candidates ./candidates.jsonl`
 4. `pytest -q`
-5. Inspect flagged honeypots in your top 100 (expect ~0; limit is 10%).
+5. Confirm no honeypot-flagged candidates in your top 100 (currently 0; limit is 10%). Remember the filter flags 5.5% of the pool, so absence in the top 100 is expected but says little about recall of the ≈80 true honeypots.
 6. Skim ranks 1–10 by hand: titles, YOE, notice, company — do they look like the JD's "ideal candidate"?
 
 ## Ideas for stronger evaluation

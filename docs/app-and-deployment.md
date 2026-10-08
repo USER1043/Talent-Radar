@@ -13,11 +13,12 @@ The app adds the repo root to `sys.path` so it can import `features_utils`.
 3. On success: shows the CSV in a dataframe, offers a download button, and saves a copy to `./temp_preview_ranked.csv`
    so the Explorer tab can display it. On failure: shows `stderr`.
 
-The five "Stage n/5" status messages and progress-bar values are **cosmetic** — they are set around a single blocking
+The five "Stage n/5" status messages (stage 4 now reads "Writing fact-checked reasoning for the finalists…") and progress-bar values are **cosmetic** — they are set around a single blocking
 `subprocess.run`, not driven by real pipeline progress.
 
-Requirements to work: all `rank.py` artifacts (`faiss.index`, `bm25.pkl`, parquet files, `ranker_model.pkl`) present,
-the uploaded IDs present in `features.parquet`, and the Qwen / MiniLM weights available.
+Requirements to work: parquet files, `ranker_model.pkl`, `jd_embeddings.npy`, MiniLM weights available, and the uploaded IDs present in `features.parquet`
+(others are silently ignored; none matching ⇒ empty CSV). Uploads of **≤ 1,500 candidates use small-sample mode**, which skips FAISS/BM25 — so the sandbox runs
+without the git-ignored `faiss.index`/`bm25.pkl` (a 20-candidate file ranks in ~5 s). The default reasoning mode needs no LLM, so no Qwen weights are required. Larger uploads need the indexes.
 
 ### Tab 2 — 🔍 Candidate Explorer
 
@@ -29,8 +30,8 @@ the uploaded IDs present in `features.parquet`, and the Qwen / MiniLM weights av
   *Performance & Availability* (YOE, notice vs the 30-day JD limit, behavioural score bar) and
   *Exclusions & Rules* (consulting-only, pure research, wrapper-only, non-coding-role flags).
 - **Bottom**: scatter of final score vs behavioural score; YOE histogram.
-- Four KPI cards on top. "Shortlist Size" (2,956) and "Valid Post-Honeypot" (2,556) are **hard-coded** numbers from one run, and "Total Pool"
-  shows the number of rows in the displayed CSV (100), not the 100K pool.
+- Four KPI cards on top. "Shortlist Size" (2,956) and "Valid Post-Honeypot" (2,556) are **hard-coded** numbers from an earlier run (they predate the honeypot-rule change; the current figures are
+  2,969 and 2,792), and "Total Pool" shows the number of rows in the displayed CSV (100), not the 100K pool.
 
 If `temp_preview_ranked.csv` exists, the Explorer reads it instead of `submission.csv`; a button deletes it to revert.
 
@@ -60,18 +61,19 @@ On every push to `main`:
 2. Add a remote `hf` pointing at the Space repo, authenticated with the `HF_TOKEN` repository secret.
 3. `git push hf main --force`.
 
-Implications: the Space always mirrors GitHub `main` exactly (force-push overwrites any Space-side edits), the workflow does **not** run tests, and
+Merging to `main` is what updates the Space. Implications: the Space always mirrors GitHub `main` exactly (force-push overwrites any Space-side edits), the workflow does **not** run tests, and
 a missing/expired `HF_TOKEN` fails the job. There is no separate CI job for `pytest`.
 
 ## Submission metadata (`submission_metadata.yaml`)
 
-Mirrors the portal form: team, contact, repo and sandbox links, reproduce command, compute environment
-(16 cores, 14 GB RAM, no GPU, no network during ranking, ~30–40 min precompute), AI-tools declaration, a methodology summary, and declarations.
-Keep it in sync with behaviour changes (e.g. which model produces reasoning).
+Mirrors the portal form: team, contact, repo and sandbox links, reproduce command (with a comment that `build_index.py` must be run first, ~37 min), compute environment
+(16 cores, ~14 GB RAM, no GPU, no network during ranking, ~40 min precompute; latest measured ranking run 1 min 47 s / 4.0 GB), AI-tools declaration (now including Claude Code), a methodology summary
+(Ridge on rule-generated labels; availability multiplier; fact-grounded reasoning with offline LLM rewrites), and declarations. Keep it in sync with behaviour changes.
 
 ## Operational checklist
 
 - Never commit `candidates.jsonl(.gz)`, `faiss.index`, `bm25.pkl` (they are in `.gitignore`).
 - New large binary under `artifacts/`? Add it to `.gitattributes` (LFS) or `.gitignore` — pick deliberately.
 - Pickles (`bm25.pkl`, `ranker_model.pkl`) execute code on load; only load artifacts you built or trust.
-- Changing the embedding model requires rebuilding `faiss.index` and `jd_embeddings.npy`, **retraining** the ranker (similarity features shift), and re-tuning the 0.52–0.58 thresholds in `reasoning.py`.
+- Changing the embedding model requires rebuilding `faiss.index` and `jd_embeddings.npy` and **retraining** the ranker (similarity features shift). (The 0.52–0.58 similarity thresholds only matter to the legacy `reasoning.py` path.)
+- Don't regenerate `artifacts/jd_embeddings.npy` casually: a fresh `build_index.py` run differs from the committed file (max abs diff 0.095), and the ranker was trained against the committed one.

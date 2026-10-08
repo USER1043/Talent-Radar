@@ -5,7 +5,7 @@ Short, direct answers to the questions contributors ask most. Each points to the
 ## Big picture
 
 **Q: In one paragraph, what does the system do?**
-It narrows 100K profiles to a ~3K shortlist with a union of dense (FAISS/MiniLM) and lexical (BM25) retrieval, removes impossible "honeypot" profiles with OR-logic rules, scores the rest with a Ridge model over 16 features (semantic similarity, BM25, JD-disqualifier flags, behavioural score, notice penalty, experience), sorts, keeps the top 100, and attaches a grounded 1–2 sentence explanation to each. Heavy work is precomputed so the graded run fits 5 CPU-minutes. → [architecture](architecture.md)
+It narrows 100K profiles to a ~3K shortlist with a union of dense (FAISS/MiniLM) and lexical (BM25) retrieval, removes impossible "honeypot" profiles with OR-logic rules, scores the rest with a Ridge model over 16 features (semantic similarity, BM25, JD-disqualifier flags, behavioural score, experience), multiplies by an availability factor (inactivity, low response rate, long notice), sorts, keeps the top 100, and attaches a fact-audited 1–2 sentence explanation to each. Heavy work is precomputed so the graded run fits 5 CPU-minutes. → [architecture](architecture.md)
 
 **Q: Why not just rank by embedding similarity to the JD?**
 The dataset is built to punish that: keyword stuffers have perfect skill lists but the wrong role, plain-language strong candidates never use the buzzwords, and honeypots are impossible profiles that can look great. Similarity is one feature among sixteen; title coherence, disqualifier flags, and availability signals correct for it. → [retrieval-and-ranking](retrieval-and-ranking.md)
@@ -61,22 +61,28 @@ One impossible fact (an expert skill with 0 months of use, overlapping jobs) is 
 **Q: Why hard-filter instead of penalise?**
 Because >10% honeypots in the top 100 is a disqualification and they are ground-truth zeros; a penalty can be outweighed by a high similarity score, a filter cannot.
 
-**Q: How do you check a company's existence without external data?**
-By inferring a lower bound from the pool: the ~10th-percentile start date across ≥ 5 mentions. Rare companies are skipped for that rule.
+**Q: Do you check whether a company existed during someone's tenure?**
+Not any more. The original rule inferred a founding date from other candidates' start dates, but with no real founding data it flagged 17.5% of the pool regardless of role and removed 7 of the eventual top 10, so it was dropped. Every remaining rule uses only fields inside the candidate's own record.
 
 **Q: What are the false-positive risks?**
 Noisy `duration_months` data, genuine concurrent part-time roles, and non-standard degree names. Mitigated by tolerances (2 months) but not eliminated; inspect `honeypot_reasons`.
 
 ## Reasoning
 
-**Q: How do you stop the LLM from hallucinating?**
-It never sees the raw profile — only a closed set of facts produced by deterministic rules (rank, persona, constraint, differentiator), plus few-shot examples, greedy decoding, and post-validation. If the model fails entirely, rule-based templates take over. → [reasoning-engine](reasoning-engine.md)
+**Q: How do you stop reasoning from hallucinating?**
+By construction. The default generator is deterministic: it fills sentence frames only with facts read from the candidate's own record (title, employer, years, listed skills with proficiency/months, a verbatim role-description quote, real concerns), then `audit_reasoning` re-checks every claim; a failure falls back to a minimal true sentence. No LLM is involved at ranking time. → [reasoning-engine](reasoning-engine.md)
+
+**Q: Then where does the LLM come in?**
+Optionally, offline. A small local model (Qwen2.5-1.5B/0.5B) rewords drafts; a strict gate accepts a rewrite only if it keeps the title/company relation, ≥ 2 skills exactly, every quote, every concern/number and the rank-tier verdict, and adds no numbers, names, praise or job-posting wording. Accepted rewrites are cached by draft text; at ranking time the cache is read and each entry is re-gated, so no model is loaded. About 38–39 of 100 rows get a rewrite; the rest use the grounded text.
+
+**Q: Why not let the LLM write the text directly from the profile?**
+It would be fluent but unverifiable, slower (the legacy LLM mode takes 3 min 47 s vs 1 min 47 s and 7 GB vs 4 GB), and a 0.5B model drifts: swapping who works where, adding praise words, dropping numbers. An earlier version fed only abstract labels to Qwen and produced generic text; that is why the default changed. → [design D10](design-decisions.md)
 
 **Q: Why do adjacent candidates get different explanations?**
-`plan_reason` compares each candidate to the ones ranked just above and below and records the specific reason they beat/lose (notice period, semantic match, experience, coding). Templates are also chosen by `md5(candidate_id)`.
+Different candidates surface different facts (skills, quotes, concerns), 5 × 4 sentence frames and 3 verdict phrasings per tier are chosen by `md5(candidate_id)`, and the LLM-rewritten rows add further variety. Phrasing still repeats in places (e.g. "the JD's 5-9 year band") — this is a known limitation of a template-based default.
 
-**Q: Why such a small model?**
-Network is off and the whole run, including 100 generations, must fit in 5 CPU-minutes. A 0.5B instruct model plus structured facts is a pragmatic point on that curve.
+**Q: What does the "slotted" mode do?**
+The LLM writes only connecting words around placeholders like `[WHO]`/`[SKILLS]`; code fills the facts, so the model physically cannot alter them. The gate and cache-refill logic exist and are tested, but the committed cache holds no templates and there is no CLI entry to build them, so `slotted-cached` currently falls back to the grounded text.
 
 ## Engineering
 
@@ -87,10 +93,10 @@ Stable schema across batches, no sparse column explosion, and downstream readers
 The input is 465 MB; the online run only needs to know *which* candidates are present, and a regex over each line is far cheaper than `json.loads`.
 
 **Q: How is determinism ensured?**
-Seeds (42/123), numeric tie-breaks, md5-based template selection, pinned "today" (2026-06-30) for recency, greedy decoding.
+Seeds (42/123), numeric tie-breaks, md5-based template selection, pinned `AS_OF_DATE` (2026-06-30) for recency, greedy decoding for offline rewrites, and a rewrite cache keyed by the exact draft text.
 
 **Q: What breaks if I swap the embedding model?**
-Everything that depends on cosine scale: `faiss.index`, `jd_embeddings.npy`, the ranker (trained on old similarities), and the 0.52–0.58 thresholds in `reasoning.py`. Rebuild and retrain in that order.
+Everything that depends on cosine scale: `faiss.index`, `jd_embeddings.npy` and the ranker (trained on the old similarities). Rebuild the indexes, then retrain. (Note a fresh JD re-embedding already differs from the committed one by up to 0.095, so check ordering before and after.)
 
 **Q: How would this scale to 10M candidates?**
 Replace `IndexFlatIP` with an IVF-PQ or HNSW index, shard BM25 (or move to OpenSearch/Elasticsearch), keep the ranker linear and stateless, cache per-candidate features, and batch embedding online only for the shortlist. The offline/online split stays.
@@ -99,4 +105,12 @@ Replace `IndexFlatIP` with an IVF-PQ or HNSW index, shard BM25 (or move to OpenS
 Offline: labelled judgments with NDCG/MAP; online: A/B tests on recruiter engagement, plus offline-to-online correlation checks. The JD itself describes this evaluation loop as a first-90-day priority.
 
 **Q: What's the first thing you'd fix?**
-The FAISS/BM25 row-position alignment in `rank.py` for subset inputs (A1), then human-reviewed labels and feature scaling. → [known-issues](known-issues-and-roadmap.md)
+Measurement: the labels are rule-generated and the honeypot negatives came from a flag set that included a since-removed rule, so ranking quality against the hidden tiers is unmeasured. Next: the three JD disqualifiers with ≈ 0 coefficient, the FAISS/BM25 row-position alignment in `rank.py` for mid-sized subset inputs, and feature scaling. → [known-issues](known-issues-and-roadmap.md)
+
+## Changes over time
+
+**Q: What did the later audit change, and why?**
+(1) Removed the company-founding honeypot rule — it flagged 17.5% of the pool irrespective of role and ejected 7 of the top 10. (2) Added the availability multiplier and neutralised the Ridge's wrong-signed notice coefficient. (3) Replaced the abstract-label Qwen reasoning with a fact-grounded, audited generator, plus an offline gated LLM-rewrite cache. (4) Added a small-sample mode so the sandbox runs without the big indexes. (5) Added tests for the reasoning stack. → [design-decisions](design-decisions.md)
+
+**Q: How would you check that the honeypot filter is doing its job?**
+Per-rule flag counts and rates (the table in [honeypot-detection](honeypot-detection.md)), the flag rate split by AI/ML vs other titles (a good rule should not flag both equally), how many top-ranked candidates a rule would eject, and a manual read of `honeypot_reasons` for a sample. Rule 6 flags 5,248 of 5,542, so it deserves the first look.

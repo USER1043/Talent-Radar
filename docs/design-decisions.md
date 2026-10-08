@@ -32,24 +32,25 @@ Contributors should read the relevant entry before changing the behaviour it des
 - **Alternatives:** BGE/E5 (better quality, slower, bigger); HNSW/IVF (unnecessary at this scale); cross-encoder re-rank (expensive on CPU, and no labelled data to fine-tune).
 - **Trade-off:** MiniLM truncates long inputs (≈256 word-pieces by default), so long narratives are represented by their beginning.
 
-## D5. Honeypots: OR-logic hard filter
+## D5. Honeypots: OR-logic hard filter, self-contained rules only
 
-- **Decision:** six independent rules; any one fires → removed from candidates before the top-100 cut.
+- **Decision:** five independent rules (1, 2, 4, 5, 6); any one fires → removed before the top-100 cut. Every rule uses only fields inside the candidate's own record.
 - **Why:** ground truth forces honeypots to relevance 0 and > 10% in the top 100 is a disqualification — an asymmetric cost, so false positives are cheaper than false negatives. Averaging would dilute a single decisive red flag.
-- **Alternatives:** weighted risk score + threshold; penalty inside the ranker; anomaly detector (isolation forest) over numeric features.
-- **Trade-off:** some genuine candidates with noisy data (e.g. a 3-month `duration_months` mismatch) are lost.
+- **Alternatives:** weighted risk score + threshold; penalty inside the ranker; anomaly detector (isolation forest) over numeric features; no filter at all (the spec says a good ranker avoids honeypots naturally).
+- **Trade-off:** the filter is broad (5.5% of the pool flagged vs ≈ 80 expected; rule 6 dominates) and two rules never fire on this data. Real honeypot recall is unknown.
 
-## D6. Company-existence check inferred from the pool
+## D6. (Reversed) Company-existence check inferred from the pool
 
-- **Decision:** 10th-percentile start date per company, trusted only with ≥ 5 mentions.
-- **Why:** no external founding-date source is available offline; the median would flag ~half of small groups by construction.
-- **Trade-off:** rare companies get no timeline check (they rely on the other five rules); a fabricated company mentioned by many honeypots could "corroborate" itself.
+- **Original decision:** flag a role that starts > 6 months before the company's *inferred* founding, taken as the ≈ 10th-percentile start date across ≥ 5 mentions (`company_stats.py`; Tier A/B split).
+- **What went wrong:** the schema has no founding date, so the statistic measured "how early did this candidate start relative to peers". It flagged 17,477 candidates (17.5%), equally for AI/ML titles and everyone else, and ejected 7 of the eventual top 10.
+- **Outcome:** rule removed on 2026-09-20; `company_stats.py` retained for reference only.
+- **Lesson:** a heuristic that substitutes pool statistics for missing ground truth must be validated for *base rate* and *selectivity* before it is allowed to hard-filter. **Trade-off accepted:** the spec's "8 years at a company founded 3 years ago" pattern is no longer detected.
 
 ## D7. JD disqualifiers as soft features, not filters
 
 - **Decision:** encode each "we do NOT want" clause as a 0/1 feature and let the ranker weight it.
 - **Why:** detection is keyword-based over free text and therefore noisy; a wrong hard filter silently deletes a strong candidate, which hurts NDCG@10 more than a slightly wrong soft weight.
-- **Trade-off:** the "hard" JD clause (pure research) has no stronger treatment than the soft ones unless the data teaches it.
+- **Trade-off:** the "hard" JD clause (pure research) has no stronger treatment than the soft ones unless the data teaches it — and in practice it did not: the fitted Ridge gives `is_pure_research`, `is_recent_wrapper_only` and `is_consulting_only` coefficients of ≈ 0, so those three disqualifiers are effectively not enforced.
 
 ## D8. Ridge over LightGBM LambdaRank
 
@@ -62,20 +63,21 @@ Contributors should read the relevant entry before changing the behaviour it des
 
 - **Decision:** sample five archetypes (honeypot / stuffer / strong / mild / background) and assign relevance by archetype.
 - **Why:** gets a supervised signal in minutes, covers every trap type explicitly, reproducible via seeds.
-- **Trade-off:** the labels encode the author's definition of "fit"; the ranker learns that definition, not the hidden grader's. Treat CV scores as sanity checks only.
+- **Trade-off:** the labels encode the author's definition of "fit"; the ranker learns that definition, not the hidden grader's. Treat CV scores as sanity checks only. The honeypot negatives were also sampled using flags that included the since-removed rule 3.
 
-## D10. Plan first, narrate second (reasoning)
+## D10. Reasoning: facts from the record, audited; LLM only as optional, gated polish
 
-- **Decision:** a rule-based planner decides persona, trade-offs, evidence and neighbour differentiators; an LLM (or template) only verbalises that plan.
-- **Why:** keeps explanations consistent with the real rank and features; hard to hallucinate when the model never sees the raw profile; testable without a model.
-- **Alternatives:** free-form LLM over the full profile (hallucination risk, latency); pure templates (repetitive, flagged as duplicates).
-- **Trade-off:** explanations are only as specific as the plan's few fields — they rarely cite concrete projects or companies.
+- **Original decision (v1):** a rule-based planner decided persona/trade-offs and a local Qwen 0.5B verbalised an *abstract* plan.
+- **Problem found in audit:** the prompt held no concrete profile facts and nothing checked claims against the record, so output was generic ("strong alignment across semantic, technical, and readiness dimensions…") and sometimes wrong-sounding. It also doubled runtime (3 min 47 s, 7 GB).
+- **Decision (now):** default `grounded` mode builds each explanation from the candidate's own record (title, employer, years, up to 3 listed JD skills with proficiency/months, a verbatim role-description quote, real concerns), tone by rank tier, and **audits every claim**; failure falls back to a minimal true sentence.
+- **LLM polish is offline + cached + re-gated:** a small local model rewords drafts once; a strict gate accepts a rewrite only if every fact survives and nothing is added; ranking reads the cache and re-gates each entry, so no model loads in the graded step.
+- **Alternatives:** free-form LLM over the full profile (hallucination, latency); pure templates (repetitive, but safe — this is the fallback); slot-filling where the LLM writes only connectives (implemented as `slotted-cached`, not yet populated).
+- **Trade-off:** safe and fast but template-based — phrasing repeats across rows; the LLM rewrite covers only ≈ 38–39% of rows because small models drop the verbatim quote even when told not to.
 
-## D11. Local 0.5B model, one batched generation, fallback on any exception
+## D11. Keep the legacy path selectable
 
-- **Decision:** `Qwen2.5-0.5B-Instruct` on CPU, all 100 prompts in one `generate`, deterministic templates if anything fails.
-- **Why:** no network/API allowed during ranking; time budget leaves ~2–3 minutes for 100 explanations; the pipeline must always produce a valid CSV.
-- **Trade-off:** small-model fluency issues; a failure is silent apart from a log line, so output style can change between environments.
+- **Decision:** `--reasoning-mode llm` still runs the old planner + Qwen generation (lazy-imports torch), so the two approaches can be compared and the old behaviour reproduced.
+- **Trade-off:** more code to maintain; its output quality is the reason it is not the default.
 
 ## D12. Stream and slim everything
 
@@ -86,8 +88,22 @@ Contributors should read the relevant entry before changing the behaviour it des
 
 ## D13. Deterministic by construction
 
-Fixed seeds, explicit tie-break, hash-seeded template choice (`md5(candidate_id)`), pinned "today" for recency decay, greedy decoding. Same inputs ⇒ same CSV (modulo library/version drift).
+Fixed seeds, explicit tie-break, hash-seeded template choice (`md5(candidate_id)`), pinned `AS_OF_DATE` (2026-06-30) for recency, greedy decoding for offline LLM rewrites, cache keyed by exact draft text. Same inputs ⇒ same CSV (modulo library/version drift).
 
 ## D14. Git LFS + force-push mirror to a Hugging Face Space
 
 Deliverable includes a runnable sandbox. LFS keeps heavy parquet out of normal git objects; the workflow mirrors `main` to the Space on every push. Simple, but there is no test gate.
+
+## D15. Availability as a post-model multiplier, and neutralising a wrong-signed coefficient
+
+- **Context:** the JD says unreachable candidates ("hasn't logged in for 6 months, 5% response rate") must be down-weighted, but `behavioral_score` is one small feature inside a Ridge; its effect was ≈ 0.24 points on a 4–8 scale. Separately, the fitted Ridge rewarded *longer* notice periods (+0.16).
+- **Decision:** after prediction, multiply by an availability factor (recency × response rate × notice; range 0.29–1.0) that can only lower a candidate's standing, and zero the notice feature at prediction time instead of retraining.
+- **Why:** transparent, directly traceable to JD wording, leaves the trained pickle untouched (no retraining on rule-generated labels).
+- **Alternatives:** retrain with monotonic constraints; engineer an explicit "unavailable" label; hand-edit coefficients.
+- **Trade-off:** parameters are judgment values, not fitted; with scores tightly packed at ranks 50–100 a small multiplier change reorders the middle of the list.
+
+## D16. Small-sample mode in `rank.py`
+
+- **Decision:** with ≤ 1,500 candidate IDs, skip retrieval and score everyone; set `bm25_score = 0`.
+- **Why:** the sandbox (Hugging Face Space) cannot hold the git-ignored 340 MB of indexes, and a retrieval step is pointless when the whole file fits in the shortlist.
+- **Trade-off:** scores differ slightly from a full run (BM25 weight ≈ 0.004); and only IDs present in the precomputed `features.parquet` can be ranked at all.
