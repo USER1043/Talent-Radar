@@ -56,7 +56,7 @@ The 30 honeypot negatives came from flags that included the removed rule 3 and t
 
 ### B2. Three JD disqualifiers carry ≈ 0 weight
 
-`is_consulting_only` (−0.003), `is_pure_research` (0.000) and `is_recent_wrapper_only` (0.000) are effectively not enforced by the model. Other coefficients have unintuitive signs (`semantic_sim_to_jd` −0.865, `years_of_experience` −0.170). Options: enforce them as an explicit multiplier (as availability is), retrain with better labels, or use monotonic constraints.
+`is_consulting_only` (−0.003), `is_pure_research` (0.000) and `is_recent_wrapper_only` (0.000) are effectively not enforced by the model. Evidence from the committed `eval_set.csv`: only **4 of the 150 rows** have `is_consulting_only = True` (3 keyword stuffers, 1 honeypot) and **none** of the 20 `mild_fit` rows do, even though that group was meant to include consulting-only candidates — the model has almost nothing to learn a weight from. (`is_pure_research` / `is_recent_wrapper_only` could not be checked here because `features.parquet` is an LFS object; they are likely also rare, and the labels come from title/similarity rules that do not use them.) The JD calls pure research a hard "we will not move forward", yet none of the three flags changes a score materially. Other coefficients have unintuitive signs (`semantic_sim_to_jd` −0.865, `years_of_experience` −0.170). Options: enforce them as an explicit multiplier (as availability is), retrain with better labels, or use monotonic constraints.
 
 ### B3. No feature scaling for Ridge
 

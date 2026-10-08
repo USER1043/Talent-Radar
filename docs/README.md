@@ -25,6 +25,29 @@ The hard parts, and where each is solved:
 | Every finalist needs a grounded, non-repetitive explanation | Fact-grounded generator with a claim audit; optional offline, gated LLM rewrites | [reasoning-engine](reasoning-engine.md) |
 | No ground-truth relevance labels | Synthetic stratified eval set + CV model selection | [evaluation-and-testing](evaluation-and-testing.md) |
 
+## Status at a glance
+
+A snapshot of where the project stands at the time these docs were written (figures marked † are quoted from the project's own README/architecture notes, not re-measured).
+
+**Working well**
+- Full 100K run in **1 min 47 s, 4.0 GB**, CPU-only, no network or LLM at ranking time †.
+- Hybrid retrieval (FAISS ∪ BM25) → 2,969-candidate shortlist †; deterministic tie-breaks; output passes the organisers' validator †.
+- Reasoning is fact-grounded and audited: 0 failures over ≈ 800 claims checked against the raw data †; LLM polish is offline, gated and cached.
+- Honeypot filter uses only self-contained rules; 0 flagged candidates in the top 100 †. A harmful rule (company founding) was found by audit and removed.
+- Availability is handled explicitly (multiplier) and a wrong-signed notice coefficient is neutralised.
+- Reproducibility: fixed seeds, pinned dependencies, scripted precompute, tests for the reasoning stack (29 pass †).
+
+**Weak or open**
+- **No ground truth.** Eval labels are rule-generated; the ranker's CV score measures agreement with those rules, not the hidden relevance tiers.
+- **Three JD disqualifiers have ≈ 0 weight** (consulting-only, pure research, wrapper-only); the committed eval set has only 4 of 150 consulting-only rows.
+- **Honeypot filter is broad** (5.5% of the pool flagged vs ≈ 80 expected †, mostly via the education-order rule) and its real recall is unknown.
+- Eval set and ranker were **not regenerated** after the honeypot rule change.
+- Default reasoning is template-based (phrasing repeats); LLM rewrites cover only ≈ 38% of rows †; slotted mode is unfinished.
+- `rank.py` index/row alignment can break for mid-sized subset inputs; dashboard KPIs are hard-coded and stale; CI runs no tests.
+- Committed `jd_embeddings.npy` cannot be reproduced by `build_index.py` (max abs diff 0.095 †).
+
+Details and a prioritised fix list: [known-issues-and-roadmap.md](known-issues-and-roadmap.md).
+
 ## Reading order
 
 1. [getting-started.md](getting-started.md) — set up, run, what you can and cannot run from a fresh clone.
