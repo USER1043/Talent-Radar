@@ -1,8 +1,15 @@
 #!/usr/bin/env python3
 """
+NOTE (2026-09-20): NO LONGER USED by the pipeline. honeypot_flags.py dropped
+the rule that consumed this output ("tenure predates the inferred founding"):
+the candidate schema has no founding date, so the date was inferred from other
+candidates' start dates and the rule flagged ~17.5% of the pool regardless of
+role (see redrob_ranking_architecture.md section 6). The script is kept for
+reference only.
+
 Build per-company first-seen statistics from career_history across the
-full candidate pool. Used by honeypot_flags.py to catch "tenure predates
-the company's existence" honeypots (see ARCHITECTURE.md section 6.2).
+full candidate pool. Formerly used by honeypot_flags.py to catch "tenure
+predates the company's existence" honeypots.
 
 Tier A: companies mentioned by >=5 candidates -> we use a LOW PERCENTILE
   (roughly the 10th percentile) of start_date across all mentions as the

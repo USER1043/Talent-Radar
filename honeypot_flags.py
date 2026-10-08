@@ -9,7 +9,6 @@ under a threshold.
 Usage:
     python honeypot_flags.py \
         --features ./artifacts/features.parquet \
-        --company-stats ./artifacts/company_stats.parquet \
         --out ./artifacts/honeypot_flags.parquet
 """
 
@@ -29,7 +28,6 @@ from schema_utils import parse_date
 # clear outlier cluster) and adjust.
 LOW_EXPERIENCE_YEARS = 1.0      # "0 experience" in the spec's example, with slack
 HIGH_SKILL_COUNT = 8            # "excessive skills" in the spec's example
-COMPANY_FOUNDING_BUFFER_MONTHS = 6  # tolerance before flagging "predates founding"
 OVERLAP_TOLERANCE_MONTHS = 2  # small overlaps (notice-period handover) are normal
 
 
@@ -54,7 +52,7 @@ def has_overlapping_entries(career: list[dict]) -> bool:
     return False
 
 
-def check_candidate(row, company_stats: dict) -> tuple[bool, list[str]]:
+def check_candidate(row) -> tuple[bool, list[str]]:
     reasons = []
 
     # Rule 1 -- expert/advanced skill claimed with zero time spent on it
@@ -71,22 +69,14 @@ def check_candidate(row, company_stats: dict) -> tuple[bool, list[str]]:
 
     career = json.loads(row["career_history_json"])
 
-    # Rule 3 -- tenure predates the company's inferred founding.
-    # Tier A only (corroborated companies, n>=5); Tier B companies have no
-    # reliable independent data to check against, so they fall through to
-    # rules 1/2/4/5 instead -- see company_stats.py docstring.
-    for entry in career:
-        company = (entry.get("company") or "").strip()
-        stat = company_stats.get(company)
-        if stat is None or not stat.get("is_corroborated"):
-            continue
-        start = parse_date(entry.get("start_date"))
-        earliest_plausible = parse_date(stat.get("earliest_plausible_date"))
-        if start and earliest_plausible:
-            buffer_days = COMPANY_FOUNDING_BUFFER_MONTHS * 30
-            if (earliest_plausible - start).days > buffer_days:
-                reasons.append(f"tenure at '{company}' predates its inferred founding")
-                break
+    # Rule 3 (tenure predates the company's inferred founding) was REMOVED.
+    # The candidate schema has no company-founding field, so the "founding
+    # date" was inferred from other candidates' start dates in the same pool
+    # (company_stats.py). By construction that flagged ~17% of all candidates
+    # regardless of role and pushed several top-ranked profiles out of the
+    # shortlist. The spec does not require special-casing honeypots
+    # (submission_spec section 7); rules 1, 2, 4, 5 and 6 below only use
+    # fields inside the candidate's own record.
 
     # Rule 4 -- overlapping full-time roles
     if has_overlapping_entries(career):
@@ -132,20 +122,17 @@ def check_candidate(row, company_stats: dict) -> tuple[bool, list[str]]:
 def main():
     ap = argparse.ArgumentParser()
     ap.add_argument("--features", required=True, type=Path)
-    ap.add_argument("--company-stats", required=True, type=Path)
     ap.add_argument("--out", required=True, type=Path)
     args = ap.parse_args()
 
     features = pd.read_parquet(args.features)
-    stats_df = pd.read_parquet(args.company_stats)
-    company_stats = stats_df.set_index("company").to_dict(orient="index")
 
     flags, reasons_list = [], []
     # NOTE: iterrows() is fine for an offline, untimed precompute step on
     # 100K rows (seconds to low minutes). If this script ever needs to
     # move into the timed rank.py path, vectorize it first.
     for _, row in features.iterrows():
-        flagged, reasons = check_candidate(row, company_stats)
+        flagged, reasons = check_candidate(row)
         flags.append(flagged)
         reasons_list.append("; ".join(reasons))
 

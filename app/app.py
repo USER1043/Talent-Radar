@@ -127,7 +127,7 @@ def main():
                         status_box.info("Stage 3/5: Running honeypot rules and filtering candidates...")
                         progress_bar.progress(70)
                         
-                        status_box.info("Stage 4/5: Generating deterministic reason planner details...")
+                        status_box.info("Stage 4/5: Writing fact-checked reasoning for the finalists...")
                         progress_bar.progress(90)
                         
                         status_box.success("Stage 5/5: Pipeline completed successfully!")
