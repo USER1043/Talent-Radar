@@ -1,0 +1,197 @@
+{
+ "0a0a9fdc99ebb1428b8e56a64794e21d79c311d6": {
+  "attempt": 1,
+  "model": "Qwen/Qwen2.5-1.5B-Instruct",
+  "rewrite": "Senior Applied Scientist at Niramai, with 9 years of experience, is a clear fit: the profile lists BM25 (expert, 92 mo), pgvector (expert, 58 mo) and Text Encoders (expert, 36 mo), along with product-company experience. The signals are healthy: 63% recruiter response rate, immediate availability and based in Kolkata."
+ },
+ "0a60f5aaef6d2b3e488993d008f5c9d66e4b7963": {
+  "attempt": 1,
+  "model": "Qwen/Qwen2.5-1.5B-Instruct",
+  "rewrite": "At Netflix, a 6-year Search Engineer is borderline fit, with JD-relevant skills including Milvus (expert, 93 mo), Semantic Search (expert, 68 mo), and Embeddings (expert, 59 mo). The candidate faces a relocation challenge due to a base in Austin, USA, compared to the role's location in Pune/Noida, which is not open to relocation. There is no open-to-work flag."
+ },
+ "14eb22b17549f7935887b090701908422e6c6f37": {
+  "attempt": 1,
+  "model": "Qwen/Qwen2.5-0.5B-Instruct",
+  "rewrite": "Flipkart's Senior Machine Learning Engineer has 8.1 years of experience, listed skills include Vector Search (expert, 93 mo), Elasticsearch (expert, 80 mo) and Embeddings (expert, 75 mo). A good match: the candidate is based in London, UK, while the role is Pune/Noida (not open to relocating) and has no linked GitHub activity."
+ },
+ "16d6738cee3088fbcc0418ff4d772803c7f54714": {
+  "attempt": 1,
+  "model": "Qwen/Qwen2.5-1.5B-Instruct",
+  "rewrite": "At PolicyBazaar, a 4.7-year Applied ML Engineer is a reasonable fit, with skills like Sentence Transformers (expert, 91 mo), Semantic Search (expert, 86 mo), and OpenSearch (expert, 67 mo). The candidate faces a relocation challenge due to a base in Dubai, UAE, while the role is in Pune/Noida (not open to relocating). It is below the JD's 5-9 year experience range."
+ },
+ "18daac4f417fb74ae13c50159e4fe212795bbb5d": {
+  "attempt": 1,
+  "model": "Qwen/Qwen2.5-1.5B-Instruct",
+  "rewrite": "At Sarvam AI, a 5.3-year Senior Applied Scientist is a solid match, with skills like Sentence Transformers (expert, 80 mo), pgvector (expert, 78 mo), and Recommendation Systems (advanced, 53 mo). The signals are healthy: 55% recruiter response rate, immediate availability, and based in Kolkata."
+ },
+ "2be88afe5cdf1ce57574120107638700c8ad574c": {
+  "attempt": 1,
+  "model": "Qwen/Qwen2.5-1.5B-Instruct",
+  "rewrite": "Recommendation Systems Engineer at Glance, with 4.9 years of experience, is a reasonable fit: the profile lists Elasticsearch (expert, 50 mo), Milvus (expert, 46 mo) and Pinecone (expert, 46 mo). The candidate has 4.9 years of experience, which is below the JD's 5-9 year band, but there is no open-to-work flag."
+ },
+ "2d9e481f32abad9c3c3b23f2bc1d35217df674f4": {
+  "attempt": 1,
+  "model": "Qwen/Qwen2.5-1.5B-Instruct",
+  "rewrite": "Genpact AI's Senior Machine Learning Engineer, with 6.1 years of experience, is a solid match: listed skills include Sentence Transformers (expert, 74 mo), Qdrant (expert, 44 mo), and Information Retrieval (advanced, 59 mo). A 60-day notice period is noted."
+ },
+ "2fc4e0a938659ec8fd63871fd7fd91c4f618792b": {
+  "attempt": 1,
+  "model": "Qwen/Qwen2.5-1.5B-Instruct",
+  "rewrite": "At Mad Street Den, a 6.4-year AI Engineer is a reasonable fit, showcasing skills like Recommendation Systems (expert, 87 mo), Semantic Search (expert, 70 mo), and Elasticsearch (expert, 53 mo). The main concern is that there is no open-to-work flag and no linked GitHub activity."
+ },
+ "3488955cca24a6561afc07ec87afee350787fada": {
+  "attempt": 1,
+  "model": "Qwen/Qwen2.5-1.5B-Instruct",
+  "rewrite": "7.2-year Senior Machine Learning Engineer at Zomato is a good fit, with skills including Weaviate (expert, 88 mo), Learning to Rank (expert, 70 mo), and Embeddings (expert, 65 mo). The candidate has a 61% recruiter response rate, a 15-day notice, and is based in Noida."
+ },
+ "34ba28d03c0cd1fb75ebba13c2ee5651e61ec8f5": {
+  "attempt": 1,
+  "model": "Qwen/Qwen2.5-0.5B-Instruct",
+  "rewrite": "5.1-year Search Engineer at CRED is a reasonable fit: listed skills include Qdrant (expert, 94 mo), Learning to Rank (advanced, 52 mo) and QLoRA (expert, 93 mo). There is nothing disqualifying on record, and it sits lower on relative score than the other profiles. The candidate has an 80% recruiter response rate and a 45-day notice."
+ },
+ "3a95f4673f920908fe9d42b5e5cc3d36f7228b43": {
+  "attempt": 1,
+  "model": "Qwen/Qwen2.5-1.5B-Instruct",
+  "rewrite": "Nykaa's Search Engineer, with 7.8 years of experience, shows marginal match: hands-on skills include Qdrant (expert, 86 mo), Learning to Rank (advanced, 51 mo), and Python (advanced, 23 mo). There is a gap to watch: 5 employers at approximately 18 months each, against the JD's desire for a 3+ year commitment. No open-to-work flag exists."
+ },
+ "4d32c465f9db3df925710101d8756ead7be10233": {
+  "attempt": 1,
+  "model": "Qwen/Qwen2.5-1.5B-Instruct",
+  "rewrite": "Paytm's Staff Machine Learning Engineer is a solid match after 7 years of experience within the JD's 5-9 year band. Skills include Recommendation Systems (expert, 86 mo), pgvector (expert, 75 mo), and BM25 (expert, 66 mo). A 60-day notice period holds them back."
+ },
+ "4df591e8a56bd4948d0e8df922a812eedf6a4db8": {
+  "attempt": 1,
+  "model": "Qwen/Qwen2.5-0.5B-Instruct",
+  "rewrite": "6.9-year AI Engineer at Microsoft is a good match: the profile lists OpenSearch (expert, 87 mo), Vector Search (expert, 83 mo) and Sentence Transformers (expert, 72 mo). The candidate has an 81% recruiter response rate, a 30-day notice and is based in Trivandrum."
+ },
+ "4fc8042c33807006c3feb8efe9067b4f2e8bd90f": {
+  "attempt": 1,
+  "model": "Qwen/Qwen2.5-1.5B-Instruct",
+  "rewrite": "Flipkart's Senior Data Scientist, with 6.5 years of experience and listed skills including OpenSearch (expert, 96 mo), Embeddings (expert, 54 mo), and Learning to Rank (advanced, 34 mo), provides a solid match. However, there is no open-to-work flag."
+ },
+ "55904e728783283e84ee680a7a9bec9c6350f581": {
+  "attempt": 1,
+  "model": "Qwen/Qwen2.5-1.5B-Instruct",
+  "rewrite": "Applied ML Engineer at Krutrim, with 7.4 years of experience, is a partial match: the profile lists FAISS (expert, 66 mo), Information Retrieval (expert, 41 mo), and LoRA (advanced, 58 mo). A role described as \"Built a content recommendation system serving 10M+ users that combined collaborative filtering with content-based ranking\" is listed. No open-to-work flag holds the candidate back."
+ },
+ "5bef6f165b360fcad8266b972ae23165714bcbd2": {
+  "attempt": 1,
+  "model": "Qwen/Qwen2.5-1.5B-Instruct",
+  "rewrite": "Senior Data Scientist at Netflix (5.3 years) is a reasonable fit: the profile lists Elasticsearch (expert, 66 mo), Semantic Search (expert, 64 mo), and Fine-tuning LLMs (expert, 54 mo). A role described as \"Built a content recommendation system serving 10M+ users that combined collaborative filtering with content-based ranking\" is noted. No linked GitHub activity signals a gap to watch."
+ },
+ "653ec2c2733cfb1dc6d0ca97e3fcd7ff8bd4957d": {
+  "attempt": 1,
+  "model": "Qwen/Qwen2.5-1.5B-Instruct",
+  "rewrite": "6.4-year Lead AI Engineer at Sarvam AI is a very good match: the profile includes Qdrant (expert, 78 mo), Text Encoders (expert, 51 mo) and Information Retrieval Systems (advanced, 39 mo). There is no open-to-work flag."
+ },
+ "7d7f64be0aa6baaee10942886a500485f9a4b39f": {
+  "attempt": 1,
+  "model": "Qwen/Qwen2.5-0.5B-Instruct",
+  "rewrite": "At PolicyBazaar, a 7.7-year AI Engineer is a solid match: the profile lists OpenSearch (expert, 75 mo) and Vector Search (advanced, 34 mo), along with QLoRA (advanced, 60 mo) and a role described as \"Reported search-relevance improvement of 35% over the prior Elasticsearch BM25 setup, validated through human relevance judgments\". It is a solid match: a 60-day notice period is held back."
+ },
+ "7f35bafbb4d2925b7da6c475a94934aba6ae4954": {
+  "attempt": 1,
+  "model": "Qwen/Qwen2.5-1.5B-Instruct",
+  "rewrite": "Rephrase.ai's NLP Engineer is a moderate match, having 6.7 years of experience, with skills including Elasticsearch (expert, 78 mo), Information Retrieval (expert, 41 mo), and Haystack (advanced, 26 mo). There is no linked GitHub activity."
+ },
+ "86cd5e4e6587abacc3e811970a3ff7fbb2f3a745": {
+  "attempt": 1,
+  "model": "Qwen/Qwen2.5-1.5B-Instruct",
+  "rewrite": "At Verloop.io, a 5.7-year Machine Learning Engineer is a good match: the profile shows JD-relevant skills including Weaviate (expert, 93 mo), Embeddings (expert, 71 mo), and Semantic Search (expert, 69 mo), along with product-company experience. However, the candidate holds a 60-day notice period."
+ },
+ "8aa1f7d62800ee2a3d93ca6ebcdfbc361b3d92d8": {
+  "attempt": 1,
+  "model": "Qwen/Qwen2.5-1.5B-Instruct",
+  "rewrite": "At Razorpay, a 6.7-year Lead AI Engineer is a solid match, showcasing product-company experience and JD-relevant skills including Embeddings (expert, 95 mo), Information Retrieval (expert, 93 mo), and Recommendation Systems (expert, 62 mo). The candidate has a 73% recruiter response rate, a 30-day notice, and is based in Jaipur."
+ },
+ "8c5a9c5fc0e3e745aee2ec310f7e91fd0852bf53": {
+  "attempt": 1,
+  "model": "Qwen/Qwen2.5-1.5B-Instruct",
+  "rewrite": "At Dream11, a 3-year Machine Learning Engineer is a partial-to-good match: the profile includes FAISS (expert, 85 mo), Sentence Transformers (expert, 59 mo), and Information Retrieval (advanced, 34 mo). However, the candidate holds a 90-day notice period against the JD's preference for under 30 and has 3 years of experience, which falls below the JD's 5-9 year band."
+ },
+ "8ca867b6026b938453f06196d1cdecd558694a3b": {
+  "attempt": 1,
+  "model": "Qwen/Qwen2.5-1.5B-Instruct",
+  "rewrite": "7.9-year Senior AI Engineer at Meta is a good match, with hands-on skills including BM25 (expert, 80 mo), Haystack (expert, 47 mo), and Text Encoders (advanced, 28 mo). The gap to watch is a 60-day notice period."
+ },
+ "8e46dc584ca7898ff4729bd336f89bf5b03ff81b": {
+  "attempt": 1,
+  "model": "Qwen/Qwen2.5-1.5B-Instruct",
+  "rewrite": "Google's Search Engineer, with 7.2 years of experience, is a borderline fit: listed skills include Embeddings (expert, 78 mo), Haystack (expert, 44 mo), and Information Retrieval (expert, 36 mo). A 120-day notice period stands out against the JD's preference for under 30."
+ },
+ "9965f0e5c06c986cb5bf464c5714069e7c0a4b6c": {
+  "attempt": 1,
+  "model": "Qwen/Qwen2.5-1.5B-Instruct",
+  "rewrite": "Ola's Senior NLP Engineer, with 7.8 years of experience, is a strong fit: JD-relevant skills include Sentence Transformers (expert, 96 mo), Haystack (expert, 93 mo), and Learning to Rank (expert, 87 mo). A 90-day notice period stands out against the JD's preference for under 30."
+ },
+ "9cbdb1273f89c4bbee55eefa385b91104ff4c2c0": {
+  "attempt": 1,
+  "model": "Qwen/Qwen2.5-1.5B-Instruct",
+  "rewrite": "Google's Senior Data Scientist, with 6.5 years of experience, is a borderline fit: the profile lists Milvus (expert, 72 mo), Recommendation Systems (expert, 67 mo) and Python (expert, 86 mo), along with a role described as \"Built a content recommendation system serving 10M+ users that combined collaborative filtering with content-based ranking\". A 120-day notice period stands out against the JD's preference for under 30."
+ },
+ "a0ed22c000149161f109122974a57272d527e25c": {
+  "attempt": 1,
+  "model": "Qwen/Qwen2.5-1.5B-Instruct",
+  "rewrite": "Niramai's Senior Machine Learning Engineer is a good fit after 7.9 years of experience, with skills like Text Encoders (expert, 92 mo), OpenSearch (expert, 88 mo), and Information Retrieval Systems (expert, 76 mo). The candidate has a 61% recruiter response rate, a 45-day notice, and is based in Bangalore."
+ },
+ "acaef594e51daf7a60d7e34d5f6490ce306caf29": {
+  "attempt": 1,
+  "model": "Qwen/Qwen2.5-0.5B-Instruct",
+  "rewrite": "At Rephrase.ai, a 6.6-year Applied ML Engineer is a moderate match: the profile shows experience inside the JD's 5-9 year band and JD-relevant skills, including BM25 (expert, 87 mo), Qdrant (expert, 76 mo) and Embeddings (expert, 74 mo). There is no open-to-work flag and no linked GitHub activity."
+ },
+ "b09d6f8239edd72f8ed619e1862253919daa00df": {
+  "attempt": 1,
+  "model": "Qwen/Qwen2.5-1.5B-Instruct",
+  "rewrite": "5.7-year AI Engineer at Microsoft is a solid match: skilled in Vector Search (expert, 74 mo), Milvus (advanced, 60 mo), and Sentence Transformers (advanced, 23 mo). The main concern is the absence of an open-to-work flag."
+ },
+ "b40b22fbbe099f57a64b7e9dc018baad215d52b7": {
+  "attempt": 1,
+  "model": "Qwen/Qwen2.5-1.5B-Instruct",
+  "rewrite": "At Rephrase.ai, a 6.8-year AI Engineer is a partial-to-good match, showcasing product-company experience and hands-on skills like FAISS (expert, 62 mo), BM25 (expert, 55 mo), and QLoRA (expert, 87 mo). However, there is no linked GitHub activity."
+ },
+ "c5395e467afc7130068b27b8f2b2ce534988ca22": {
+  "attempt": 1,
+  "model": "Qwen/Qwen2.5-1.5B-Instruct",
+  "rewrite": "Salesforce's Search Engineer is a good fit after 3 years of experience, with JD-relevant skills including Weaviate (expert, 88 mo), Semantic Search (expert, 51 mo), and Sentence Transformers (advanced, 35 mo). The candidate has a 3-year experience below the JD's 5-9 year band and no open-to-work flag."
+ },
+ "c8bf61c4123c301f7d2ee2e6ead089b3acaa57a8": {
+  "attempt": 1,
+  "model": "Qwen/Qwen2.5-0.5B-Instruct",
+  "rewrite": "At Adobe, a 5.9-year Senior AI Engineer is a good match: the profile lists pgvector (expert, 91 mo) and Information Retrieval Systems (advanced, 55 mo) and includes QLoRA (advanced, 58 mo). The gap to watch is a 90-day notice period against the JD's preference for under 30; 4 employers at about 17 months each, against the JD's wish for a 3+ year commitment."
+ },
+ "d1745554c2d0ca946b523dd69af9b74f83e53435": {
+  "attempt": 1,
+  "model": "Qwen/Qwen2.5-1.5B-Instruct",
+  "rewrite": "4.7-year Machine Learning Engineer at Netflix is a partial-to-good match: listed skills include Milvus (expert, 81 mo), Recommendation Systems (expert, 71 mo), and LoRA (expert, 85 mo). The candidate has product-company experience but needs to relocate due to a base in Toronto, Canada, while the role is in Pune/Noida (not open to relocation). Experience falls below the JD's 5-9 year band."
+ },
+ "d85b18720c9cd59d0f802b1c56536bffe1b2e984": {
+  "attempt": 1,
+  "model": "Qwen/Qwen2.5-1.5B-Instruct",
+  "rewrite": "2.9-year Senior Machine Learning Engineer at PhonePe is a very good match, with skills like Haystack (expert, 86 mo), Information Retrieval (expert, 70 mo), and Learning to Rank (advanced, 43 mo). However, it falls below the JD's 5-9 year band due to the experience."
+ },
+ "dd4d6066566843dc25967b00210a15fb6d476d5e": {
+  "attempt": 1,
+  "model": "Qwen/Qwen2.5-1.5B-Instruct",
+  "rewrite": "At PharmEasy, a 5.2-year Search Engineer is a borderline fit, with product-company experience and hands-on skills including Sentence Transformers (expert, 60 mo), Pinecone (expert, 52 mo), and BM25 (expert, 41 mo). The candidate holds a 120-day notice period against the JD's preference for under 30, but is based in Toronto, Canada. The role is also available in Pune/Noida, allowing for relocation."
+ },
+ "f262c94cbb924a958a5fd42d953ae02e647a8d57": {
+  "attempt": 1,
+  "model": "Qwen/Qwen2.5-1.5B-Instruct",
+  "rewrite": "Machine Learning Engineer at Google, with 4.9 years of experience, shows skills like Elasticsearch (expert, 95 mo), Recommendation Systems (expert, 48 mo), and Fine-tuning LLMs (advanced, 51 mo). It is a good match but held back by 4.9 years of experience, which is below the JD's 5-9 year band. No open-to-work flag applies."
+ },
+ "f41b5af93cdae74395ca1d1e13c1e5a596999d0f": {
+  "attempt": 1,
+  "model": "Qwen/Qwen2.5-1.5B-Instruct",
+  "rewrite": "At Verloop.io, a 4.2-year Applied ML Engineer is a moderate match, with JD-relevant skills including Haystack (expert, 94 mo), BM25 (expert, 90 mo), and Learning to Rank (expert, 88 mo). The candidate has 4.2 years of experience, which is below the JD's 5-9 year band, but there is no open-to-work flag."
+ },
+ "f4962ee4b3c192312b22a88aa179493dcebd2089": {
+  "attempt": 1,
+  "model": "Qwen/Qwen2.5-0.5B-Instruct",
+  "rewrite": "At Meta, a 6.3-year Machine Learning Engineer is a reasonable fit: the profile mentions pgvector (expert, 60 mo), QLoRA (expert, 90 mo) and Haystack (expert, 45 mo), along with a role described as \"Built a content recommendation system serving 10M+ users that combined collaborative filtering with content-based ranking\". A 60-day notice period is included."
+ },
+ "fb91992be28bd1f296e31c9c5b12360f0ff2e583": {
+  "attempt": 1,
+  "model": "Qwen/Qwen2.5-1.5B-Instruct",
+  "rewrite": "At Haptik, a 5.7-year Machine Learning Engineer is a moderate match, with skills including OpenSearch (expert, 94 mo), BM25 (expert, 71 mo), and Recommendation Systems (advanced, 21 mo). The gap to watch is a 60-day notice period."
+ }
+}

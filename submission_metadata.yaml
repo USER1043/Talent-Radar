@@ -20,6 +20,9 @@ github_repo: "https://github.com/USER1043/talent-radar"
 sandbox_link: "https://huggingface.co/spaces/HuggingFace1043/talent-radar-redrob-sandbox"
 
 reproduce_command: "python rank.py --candidates ./candidates.jsonl --out ./submission.csv"
+# One-off precompute before the command above (indexes are not committed):
+#   python build_index.py --out-jd-embeds artifacts/jd_embeddings.rebuilt.npy    # ~37 min on 16 cores
+# See README.md for the full sequence.
 
 # ============================================================================
 # Compute environment
@@ -33,7 +36,9 @@ compute:
   uses_gpu_for_inference: false
   has_network_during_ranking: false
   pre_computation_required: true
-  pre_computation_time_minutes: 30  # Approximately 30–40 minutes
+  pre_computation_time_minutes: 40  # build_index.py ~37 min (embedding 100K profiles) + ~1 min for the rest
+# Latest measured ranking run (2026-09-20): 1 min 47 s wall, 4.0 GB peak, CPU only, offline (HF_HUB_OFFLINE=1),
+# 16 cores / ~14 GiB, Python 3.13.15, Fedora Linux. Confirm which machine's details you want to declare above.
 
 # ============================================================================
 # AI tools declaration
@@ -41,34 +46,41 @@ compute:
 ai_tools_used:
   - "Antigravity (Google DeepMind)"
   - "Claude AI (Web)"
+  - "Claude Code (Anthropic)"
 
 ai_usage_summary: |
-  Antigravity (Google DeepMind's agentic coding assistant) was used throughout
-  development for architecture design, code generation, debugging, and iterative
-  refinement of the ranking pipeline. Claude AI (web) was used for high-level
-  architecture discussions and approach validation. No candidate data was fed
-  to any external LLM. The on-device Qwen 2.5 0.5B model used for reasoning
-  generation runs entirely offline with no network access during ranking.
+  Antigravity (Google DeepMind's agentic coding assistant) was used for architecture
+  design, code generation, debugging and iteration of the original pipeline. Claude AI
+  (web) was used for architecture discussion and approach validation. Claude Code
+  (Anthropic) was used in a later session to audit the pipeline and to change it:
+  removing an over-broad honeypot rule, adding an availability/notice-period modifier,
+  replacing the reasoning generator with a fact-grounded one, writing tests, and
+  updating the documentation.
+  The ranking step calls no LLM or external API and runs fully offline; an offline precompute step
+  uses small local models (Qwen2.5-1.5B and 0.5B) to reword some reasoning text, and its output is cached and re-verified.
+  Agentic assistants had read access to the local repository and dataset files while
+  working, so sample candidate records (a synthetic, anonymised dataset) were visible
+  to those tools.
 
 # ============================================================================
 # Approach summary
 # ============================================================================
 methodology_summary: |
-  Hybrid retrieval-augmented ranking pipeline over 100K candidates. Offline
-  pre-computation parses JSONL records into a flat feature table, builds a
-  FAISS semantic index (all-MiniLM-L6-v2 embeddings) and a BM25 lexical index,
-  and flags honeypot candidates via OR-logic implausibility rules (tenure
-  inconsistencies, zero-duration advanced skills, implausible YOE, etc.).
-
-  At ranking time, a union of the top-1500 FAISS and top-1500 BM25 hits forms
-  a ~4–5K shortlist. Per-candidate structured features are extracted
-  (JD rule signals, behavioral score, notice-period penalty) and combined with
-  semantic similarity scores. A Ridge regression ranker (trained on 150
-  hand-labeled pairs; Ridge outperformed LightGBM LambdaRank on held-out
-  NDCG@10 at this label count) produces the final score. Honeypots are
-  hard-filtered before top-100 selection. Reasoning is generated on-device
-  using Qwen 2.5 0.5B (CPU, bfloat16) with a two-stage grounded prompt
-  strategy and a word-set intersection check to prevent hallucination.
+  Hybrid retrieval plus a learned ranker over 100K candidates. Offline: profiles are
+  parsed to parquet, MiniLM embeddings feed a FAISS index and a BM25 index, and five
+  self-contained honeypot rules flag impossible profiles (skill claimed for 0 months,
+  skill count vs experience, overlapping roles, date/duration mismatch, impossible
+  education order). Online (CPU, offline, about 1 min 47 s, 4 GB): the union of FAISS
+  top-1500 (JD "ideal candidate" paragraph) and BM25 top-1500 (JD text) gives a shortlist
+  of at most 3,000; a Ridge model over 16 features (semantic similarity, JD-disqualifier
+  rules, behavioural score) scores it; a post-model availability multiplier down-weights
+  candidates who are long inactive, rarely reply or have long notice periods; flagged
+  honeypots are removed and the top 100 are ranked. The Ridge is trained on 150
+  rule-generated labels, not hand labels, so it approximates heuristics rather than
+  ground truth. Reasoning starts from a deterministic generator that fills sentence frames
+  only with facts from each candidate's own record; small local LLMs (Qwen2.5-1.5B/0.5B)
+  reword about 40% of the rows OFFLINE, and each rewrite is cached and re-verified against the
+  record at ranking time (otherwise the deterministic text is used). No LLM runs at ranking time.
 
 # ============================================================================
 # Declarations

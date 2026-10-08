@@ -10,6 +10,19 @@ import json
 import numpy as np
 import pandas as pd
 
+# Snapshot date of the candidate pool; reference "today" for activity recency.
+AS_OF_DATE = dt.date(2026, 6, 30)
+
+# Availability modifier parameters (judgment values taken from the JD's own example,
+# not fitted -- there is no ground truth to fit against).
+RECENCY_FULL_CREDIT_DAYS = 90    # no penalty within ~3 months (latest activity in the pool is already 34 days
+                                 # before AS_OF_DATE; 90 days covers the freshest ~quarter of candidates)
+RECENCY_FLOOR_DAYS = 180         # inactive 6+ months ("hasn't logged in for 6 months")
+RECENCY_FLOOR_FACTOR = 0.7       # multiplier at/after the floor
+RESPONSE_FULL_CREDIT_RATE = 0.4  # ~ pool median (0.44): no penalty at or above this rate
+RESPONSE_FLOOR_FACTOR = 0.5      # multiplier at a 0% recruiter response rate
+NOTICE_PENALTY_WEIGHT = 0.2      # multiplier = 1 - 0.2 * compute_notice_period_penalty  (1.0 / 0.96 / 0.90 / 0.84)
+
 
 # Returns 1.0 if the candidate has a pure academic/research background, else 0.0.
 def compute_is_pure_research(narrative: str) -> float:
@@ -73,7 +86,7 @@ def compute_framework_enthusiast(skills_list: list[str]) -> float:
 
 # Returns a composite score (0.0 to 1.0) based on recruiter response, activity, and trust.
 def compute_behavioral_score(row: pd.Series) -> float:
-    current_date = dt.date(2026, 6, 30)
+    current_date = AS_OF_DATE
     active_str = row.get("redrob_last_active_date")
     try:
         active_date = dt.datetime.strptime(active_str, "%Y-%m-%d").date()
@@ -110,6 +123,37 @@ def compute_behavioral_score(row: pd.Series) -> float:
         0.10 * trust +
         0.10 * github
     )
+
+
+# JD: "a perfect-on-paper candidate who hasn't logged in for 6 months and has a 5%
+# recruiter response rate is ... not actually available. Down-weight them appropriately."
+# Returns a multiplier in [0.29, 1.0] built from last-active recency, recruiter
+# response rate and notice period; applied to the ranker score AFTER prediction
+# (see rank.py). JD on notice: "sub-30-day notice ... 30+ day notice candidates are
+# still in scope but the bar gets higher" -> a mild graded penalty, not a cutoff.
+def compute_availability_multiplier(row: pd.Series) -> float:
+    try:
+        active = dt.datetime.strptime(row.get("redrob_last_active_date"), "%Y-%m-%d").date()
+        days = max(0, (AS_OF_DATE - active).days)
+    except (ValueError, TypeError):
+        days = RECENCY_FLOOR_DAYS  # missing/invalid date: same convention as compute_behavioral_score
+    span = RECENCY_FLOOR_DAYS - RECENCY_FULL_CREDIT_DAYS
+    frac = min(max((days - RECENCY_FULL_CREDIT_DAYS) / span, 0.0), 1.0)
+    f_recency = 1.0 - (1.0 - RECENCY_FLOOR_FACTOR) * frac
+
+    rate = row.get("redrob_recruiter_response_rate")
+    rate = float(rate) if pd.notna(rate) else RESPONSE_FULL_CREDIT_RATE  # missing: neutral
+    f_response = RESPONSE_FLOOR_FACTOR + (1.0 - RESPONSE_FLOOR_FACTOR) * min(rate / RESPONSE_FULL_CREDIT_RATE, 1.0)
+
+    notice = row.get("redrob_notice_period_days")
+    f_notice = 1.0 - NOTICE_PENALTY_WEIGHT * compute_notice_period_penalty(notice)
+    return f_recency * f_response * f_notice
+
+
+# Applies the multiplier so a down-weighted candidate can never move UP: positive
+# scores shrink toward 0, negative scores are pushed further below 0.
+def apply_availability_multiplier(score: float, multiplier: float) -> float:
+    return score * multiplier if score >= 0 else score / multiplier
 
 
 # Returns a penalty score (0.0 to 0.8) based on notice period length.
