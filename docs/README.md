@@ -32,14 +32,14 @@ A snapshot of where the project stands at the time these docs were written. Figu
 **Working well**
 - Full 100K run in **1 min 47 s, 4.0 GB**, CPU-only, no network or LLM at ranking time †.
 - Hybrid retrieval (FAISS ∪ BM25) → 2,969-candidate shortlist †; deterministic tie-breaks; output passes the organisers' validator †.
-- Reasoning is fact-grounded and audited: 0 failures over ≈ 800 claims checked against the raw data †; LLM polish is offline, gated and cached.
-- Honeypot filter uses only self-contained rules: 5,542 of 100K flagged (5.54%) ✓; 0 flagged in the top 100 †. A harmful rule (company founding) was found by audit and removed.
+- Reasoning is fact-grounded and audited: regenerating it reproduces the committed `submission.csv` text 100/100 ✓, and all 100 rows pass the audit against the parquet record ✓ (0 failures over ≈ 800 claims against the raw data †); LLM polish is offline, gated and cached (38 of 100 rows pass the gate on re-check ✓).
+- Honeypot filter uses only self-contained rules: 5,542 of 100K flagged (5.54%) ✓, and re-running `honeypot_flags.py` reproduces the committed flags file exactly ✓; 0 flagged in the top 100 †. A harmful rule (company founding) was found by audit and removed.
 - Availability is handled explicitly (multiplier) and a wrong-signed notice coefficient is neutralised.
 - Reproducibility: fixed seeds, pinned dependencies, scripted precompute, tests for the reasoning stack (44 pass, 1 setup error for the missing `sample_submission.csv` ✓).
 
 **Weak or open**
 - **No ground truth.** Eval labels are rule-generated; the ranker's CV score measures agreement with those rules, not the hidden relevance tiers.
-- **Three JD disqualifiers have ≈ 0 weight** (consulting-only −0.003, pure research 0.000, wrapper-only 0.000 ✓). `is_pure_research` fires on **0 of 20,000** sampled pool candidates ✓ (a dead feature); wrapper-only on 0.18% ✓; consulting-only is 7% of the pool ✓ but only 4 of 150 eval rows.
+- **Three JD disqualifiers have ≈ 0 weight** (consulting-only −0.003, pure research 0.000, wrapper-only 0.000 ✓). `is_pure_research` fires on **0 of 100,000** pool candidates ✓ (a dead feature: its rule can never be true); wrapper-only on 221 (0.22%) ✓; consulting-only is 7.03% of the pool ✓ but only 4 of 150 eval rows.
 - **Honeypot filter is broad** (5.5% of the pool flagged vs ≈ 80 expected †, mostly via the education-order rule) and its real recall is unknown.
 - Eval set and ranker were **not regenerated** after the honeypot rule change.
 - Default reasoning is template-based (phrasing repeats); LLM rewrites cover only ≈ 38% of rows † (cache holds 39 entries ✓); slotted mode is unfinished.

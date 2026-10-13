@@ -20,13 +20,16 @@ After `git lfs pull`, in a CPU sandbox without access to `huggingface.co` (so Mi
 | Claim (project notes) | Re-checked? | Result |
 |---|---|---|
 | 100,000 rows, 48 columns in `features.parquet` | ✓ | Matches |
-| 5,542 honeypots flagged (5.5%); rule counts 21 / 295 / 0 / 0 / 5,248 | ✓ | Matches exactly (counted from `honeypot_reasons`) |
+| 5,542 honeypots flagged (5.5%); rule counts 21 / 295 / 0 / 0 / 5,248 | ✓ | Matches exactly (counted from `honeypot_reasons`). **Re-running `honeypot_flags.py` on `features.parquet` reproduces the committed flags file byte-for-byte** (≈ 27 s) |
+| Default reasoning is deterministic and the committed `submission.csv` is its output | ✓ | Regenerating the grounded reasoning for the 100 rows of `submission.csv` (rank order, using `features.parquet`) reproduces the committed text **100 / 100** |
+| LLM-rewrite coverage (38 of 100 rows) | ✓ | `--reasoning-mode grounded-cached` logic over the same rows: 39 cache hits, **38 pass the gate** when re-checked. Note the committed `submission.csv` is the plain grounded output, not this cached variant |
+| Reasoning audit: 0 failures | ✓ (partly) | `audit_reasoning` run on all 100 committed reasonings against the parquet record: 0 failures. The project's stronger check against the *raw* `candidates.jsonl` (≈ 800 claims) was not reproduced |
 | Ridge coefficients (e.g. +2.397 `semantic_sim_to_ideal`, +0.160 `notice_period_penalty`, ≈ 0 for the three disqualifiers) | ✓ | Match exactly (unpickled with scikit-learn 1.9.1; a version-mismatch warning vs 1.9.0, harmless here) |
 | Eval-set label counts (0:50, 1:40, 3:20, 5:40) | ✓ | Match |
 | Rewrite cache: 39 entries, 32 × Qwen-1.5B + 7 × Qwen-0.5B | ✓ | Match |
 | "29 tests pass, 1 setup error" | ✓ | **44 pass, 1 error** in a fresh clone (more tests were added with the slotted module); the error is the missing `sample_submission.csv` |
-| `is_pure_research` / `is_recent_wrapper_only` rarity | new finding | 0% / 0.18% of a 20,000-row pool sample |
-| 1 min 47 s / 4 GB run, 2,969 shortlist, 2,792 post-honeypot, 0 honeypots in top 100, 0 audit failures over ≈ 800 claims, 38 rows reworded | ✗ not reproduced | Need the 100K `candidates.jsonl`, `faiss.index`/`bm25.pkl` (~37 min to build) and the MiniLM weights |
+| Disqualifier feature rates over the full pool | ✓ new finding | `is_pure_research` 0 / 100,000; `is_recent_wrapper_only` 221 (0.22%); `is_consulting_only` 7,034 (7.03%) |
+| 1 min 47 s / 4 GB run, 2,969 shortlist, 2,792 post-honeypot, ranks/scores themselves | ✗ not reproduced | Need the 100K `candidates.jsonl`, `faiss.index`/`bm25.pkl` (~37 min to build) and the MiniLM weights (`huggingface.co` was blocked by the sandbox's network policy) |
 
 ## A. Correctness risks
 
@@ -71,7 +74,7 @@ The 30 honeypot negatives came from flags that included the removed rule 3 and t
 
 ### B2. Three JD disqualifiers carry ≈ 0 weight
 
-`is_consulting_only` (−0.003), `is_pure_research` (0.000) and `is_recent_wrapper_only` (0.000) are effectively not enforced by the model. Re-checked after `git lfs pull` (see "What was independently re-checked" below): `is_pure_research` fires on **0 of 20,000** randomly sampled pool candidates, so it is a *dead feature* — its rule (a research term and no production term in the narrative) essentially never matches; `is_recent_wrapper_only` fires on 0.18%; `is_consulting_only` on 7.05% of the pool. Evidence from the committed `eval_set.csv`: only **4 of the 150 rows** have `is_consulting_only = True` (3 keyword stuffers, 1 honeypot) and **none** of the 20 `mild_fit` rows do, even though that group was meant to include consulting-only candidates — the model has almost nothing to learn a weight from. (`is_pure_research` / `is_recent_wrapper_only` could not be checked here because `features.parquet` is an LFS object; they are likely also rare, and the labels come from title/similarity rules that do not use them.) The JD calls pure research a hard "we will not move forward", yet none of the three flags changes a score materially. Other coefficients have unintuitive signs (`semantic_sim_to_jd` −0.865, `years_of_experience` −0.170). Options: enforce them as an explicit multiplier (as availability is), retrain with better labels, or use monotonic constraints.
+`is_consulting_only` (−0.003), `is_pure_research` (0.000) and `is_recent_wrapper_only` (0.000) are effectively not enforced by the model. Re-checked after `git lfs pull` (see "What was independently re-checked" below): over the **full 100K pool** `is_pure_research` fires on **0** candidates, so it is a *dead feature* — only 150 narratives contain any research term, and 85.6% contain a production term ("pipeline", "scale", "deployed"), so "research term and no production term" is never true; `is_recent_wrapper_only` fires on 221 (0.22%); `is_consulting_only` on 7,034 (7.03%). Evidence from the committed `eval_set.csv`: only **4 of the 150 rows** have `is_consulting_only = True` (3 keyword stuffers, 1 honeypot) and **none** of the 20 `mild_fit` rows do, even though that group was meant to include consulting-only candidates — the model has almost nothing to learn a weight from. (`is_pure_research` / `is_recent_wrapper_only` could not be checked here because `features.parquet` is an LFS object; they are likely also rare, and the labels come from title/similarity rules that do not use them.) The JD calls pure research a hard "we will not move forward", yet none of the three flags changes a score materially. Other coefficients have unintuitive signs (`semantic_sim_to_jd` −0.865, `years_of_experience` −0.170). Options: enforce them as an explicit multiplier (as availability is), retrain with better labels, or use monotonic constraints.
 
 ### B3. No feature scaling for Ridge
 
@@ -131,6 +134,7 @@ The top-level README and architecture notes were rewritten and are now largely a
 | Source | Says | Reality |
 |---|---|---|
 | `redrob_ranking_architecture.md` §4 layout | tests listed: `test_reasoning_grounded.py`, no-stuffing, streamlit | there are also `test_reasoning_llm_rewrite.py` and `test_reasoning_slotted.py`; `reasoning_llm_rewrite.py`, `reasoning_slotted.py`, `artifacts/reasoning_rewrites.json` are not in the layout |
+| `README.md` ("Result (`submission_v5.csv`): 38 of the 100 finalists are reworded") | the shipped ranking has 38 LLM-reworded rows | the committed `submission.csv` equals the plain grounded output (100/100 rows); the 38 rewrites exist only in the cache and would appear with `--reasoning-mode grounded-cached` |
 | `redrob_ranking_architecture.md` §14 | "34 commits … the 2026-09-20 changes, which are not yet committed" | changes are now committed on `main` |
 | `README.md` pipeline box | lists 5 stages of offline scripts, no mention of rewrite cache | optional `grounded-llm` build exists |
 | `reasoning_slotted.py` docstring | offline build "slotted-llm" | no such `--reasoning-mode` choice |
@@ -153,7 +157,7 @@ The top-level README and architecture notes were rewritten and are now largely a
 **Medium**
 
 8. Regenerate `eval_set.csv` and retrain after the rule-3 removal; compare coefficients and top-100 overlap before/after.
-9. Enforce the three ≈ 0-weight JD disqualifiers explicitly (a post-model multiplier like availability, with a documented parameter).
+9. Fix `is_pure_research` (its rule can never be true on this pool: relax or replace the "no production term" condition, e.g. weigh research vs production term density) and enforce the three ≈ 0-weight JD disqualifiers explicitly (a post-model multiplier like availability, with a documented parameter).
 10. Per-rule honeypot review (esp. rule 6) and tune thresholds from distributions.
 11. Pairwise "obviously better/worse" regression set for the ranker, and per-sample-type CV metrics.
 12. Expose behavioural components to the ranker; fit their weights.

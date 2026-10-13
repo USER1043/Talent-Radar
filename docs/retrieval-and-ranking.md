@@ -141,7 +141,7 @@ less prone to overfitting than boosted trees even with shallow trees.
 | `is_pure_research` | 0.000 | **≈ 0 — not effectively enforced** |
 | `is_recent_wrapper_only` | 0.000 | **≈ 0 — not effectively enforced** |
 
-So three JD disqualifiers (consulting-only, pure research, wrapper-only) carry essentially no weight in the model. (Coefficients above were re-verified by unpickling `ranker_model.pkl`.) For `is_pure_research` the reason is simple: on a 20,000-row random sample of the pool it never fires (0%); `is_recent_wrapper_only` fires on 0.18% and `is_consulting_only` on 7.05%. Cause not investigated; a plausible one is that, in the rule-generated training labels, these
+So three JD disqualifiers (consulting-only, pure research, wrapper-only) carry essentially no weight in the model. (Coefficients above were re-verified by unpickling `ranker_model.pkl`.) Counting over the **full 100K pool**: `is_pure_research` fires on **0** candidates — only 150 narratives contain any research term at all, while 85.6% contain a production term ("pipeline", "scale", "deployed" … are common words), so "research term and no production term" can never be true; `is_recent_wrapper_only` fires on 221 (0.22%); `is_consulting_only` on 7,034 (7.03%). A rule that never fires cannot receive weight, so the JD's hard "pure research" disqualifier is not enforced at all.
 flags carry little information beyond the title/similarity rules that define the label groups. Inputs are not standardised, so coefficient magnitudes are not directly comparable across features.
 
 Metric helpers in the script:
